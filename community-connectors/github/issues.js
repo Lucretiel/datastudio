@@ -218,7 +218,7 @@ const getData = request => {
  * OAUTH API
  */
 
-const memoize = func => {
+const singleton = func => {
 	const sentinel = {}
 	let instance = sentinel
 	const wrapper = () => instance === sentinel ?
@@ -235,7 +235,7 @@ const OAUTH_CLIENT_ID = 'OAUTH_CLIENT_ID';
 const OAUTH_CLIENT_SECRET = 'OAUTH_CLIENT_SECRET';
 
 
-const getOAuthService = memoize(() => {
+const getOAuthService = singleton(() => {
 	const scriptProps = PropertiesService.getScriptProperties()
 	return OAuth2.createService('github')
 		.setAuthorizationBaseUrl('https://github.com/login/oauth/authorize')
@@ -255,7 +255,7 @@ const authCallback = request =>
 
 const isAuthValid = () => getOAuthService().hasAccess()
 
-// The first reset is for memoize, which returns the underlying service.
+// The first reset is for singleton, which returns the underlying service.
 const resetAuth = () => getOAuthService.reset().reset()
 
 const get3PAuthorizationUrls = () => getOAuthService().getAuthorizationUrl()
