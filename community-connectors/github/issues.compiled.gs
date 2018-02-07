@@ -244,7 +244,7 @@ var getData = function getData(request) {
  * OAUTH API
  */
 
-var memoize = function memoize(func) {
+var singleton = function singleton(func) {
 	var sentinel = {};
 	var instance = sentinel;
 	var wrapper = function wrapper() {
@@ -258,11 +258,10 @@ var memoize = function memoize(func) {
 	return wrapper;
 };
 
-// TODO(nathanwest): surely these should be something else?
 var OAUTH_CLIENT_ID = 'OAUTH_CLIENT_ID';
 var OAUTH_CLIENT_SECRET = 'OAUTH_CLIENT_SECRET';
 
-var getOAuthService = memoize(function () {
+var getOAuthService = singleton(function () {
 	var scriptProps = PropertiesService.getScriptProperties();
 	return OAuth2.createService('github').setAuthorizationBaseUrl('https://github.com/login/oauth/authorize').setTokenUrl('https://github.com/login/oauth/access_token').setClientId(scriptProps.getProperty(OAUTH_CLIENT_ID)).setClientSecret(scriptProps.getProperty(OAUTH_CLIENT_SECRET)).setPropertyStore(PropertiesService.getUserProperties()).setCallbackFunction('authCallback');
 });
@@ -275,7 +274,7 @@ var isAuthValid = function isAuthValid() {
 	return getOAuthService().hasAccess();
 };
 
-// The first reset is for memoize, which returns the underlying service.
+// The first reset is for singleton, which returns the underlying service.
 var resetAuth = function resetAuth() {
 	return getOAuthService.reset().reset();
 };
