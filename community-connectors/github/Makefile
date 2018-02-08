@@ -12,7 +12,7 @@ compiled: issues.compiled.gs main.compiled.gs
 	$(BABEL) --presets env -o $@ $<
 
 %.minified.gs : %.compiled.gs node_modules
-	$(UGLIFY) --comments -o $@ $<
+	$(UGLIFY) --comments --mangle -o $@ $<
 
 node_modules: package.json
 	npm install
