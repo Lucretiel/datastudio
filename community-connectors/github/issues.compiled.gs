@@ -1,7 +1,5 @@
 "use strict";
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
 // Copyright 2017 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -22,6 +20,9 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
  * @fileoverview Community Connector for GitHub Issues. Retrieves issue
  * data for a Github repository
  */
+
+// NOTE: Compile this file with `babel --preset env` before pasting it
+// into apps script
 
 var logged = function logged(name, func) {
 	return function () {
@@ -108,7 +109,7 @@ var ISSUE_SCHEMA = [{
 	name: "locked",
 	label: "Locked",
 	description: "True if the issue is locked",
-	dataType: "BOOL",
+	dataType: "BOOLEAN",
 	semantics: {
 		conceptType: "METRIC",
 		semanticType: "BOOLEAN"
@@ -211,12 +212,10 @@ var getFieldFromBlob = function getFieldFromBlob(issueBlob, fieldName) {
 };
 
 var encodeQuery = function encodeQuery(queryParams) {
-	return '?' + Object.entries(queryParams).map(function (_ref) {
-		var _ref2 = _slicedToArray(_ref, 2),
-		    key = _ref2[0],
-		    value = _ref2[1];
-
-		return key + "=" + value;
+	return '?' + Object.keys(queryParams).map(function (key) {
+		return [key, queryParams[key]].map(encodeURIComponent);
+	}).map(function (keyvalue) {
+		return keyvalue[0] + "=" + keyvalue[1];
 	}).join('&');
 };
 
@@ -303,4 +302,51 @@ var get3PAuthorizationUrls = function get3PAuthorizationUrls() {
 var isAdminUser = function isAdminUser() {
 	return true;
 };
+
+//// POLYFILLS
+
+// https://tc39.github.io/ecma262/#sec-array.prototype.find
+if (!Array.prototype.find) {
+	Object.defineProperty(Array.prototype, 'find', {
+		value: function value(predicate) {
+			// 1. Let O be ? ToObject(this value).
+			if (this == null) {
+				throw new TypeError('"this" is null or not defined');
+			}
+
+			var o = Object(this);
+
+			// 2. Let len be ? ToLength(? Get(O, "length")).
+			var len = o.length >>> 0;
+
+			// 3. If IsCallable(predicate) is false, throw a TypeError exception.
+			if (typeof predicate !== 'function') {
+				throw new TypeError('predicate must be a function');
+			}
+
+			// 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+			var thisArg = arguments[1];
+
+			// 5. Let k be 0.
+			var k = 0;
+
+			// 6. Repeat, while k < len
+			while (k < len) {
+				// a. Let Pk be ! ToString(k).
+				// b. Let kValue be ? Get(O, Pk).
+				// c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
+				// d. If testResult is true, return kValue.
+				var kValue = o[k];
+				if (predicate.call(thisArg, kValue, k, o)) {
+					return kValue;
+				}
+				// e. Increase k by 1.
+				k++;
+			}
+
+			// 7. Return undefined.
+			return undefined;
+		}
+	});
+}
 
