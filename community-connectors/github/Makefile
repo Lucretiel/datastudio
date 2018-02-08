@@ -11,7 +11,7 @@ compiled: issues.compiled.gs main.compiled.gs
 %.compiled.gs: %.js node_modules
 	$(BABEL) --presets env -o $@ $<
 
-%.minified.gs : %.compiled.gs
+%.minified.gs : %.compiled.gs node_modules
 	$(UGLIFY) --comments -o $@ $<
 
 node_modules: package.json
