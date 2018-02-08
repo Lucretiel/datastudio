@@ -1,4 +1,4 @@
-.PHONY: all clean minified compiled
+.PHONY: all clean minified compiled clean-modules clean-all
 
 NPM_BIN = $(shell npm bin)
 BABEL ?= $(NPM_BIN)/babel
@@ -19,4 +19,9 @@ node_modules: package.json
 	touch -ma node_modules
 
 clean:
-	rm *.*.gs
+	rm -f *.*.gs
+
+clean-modules:
+	rm -rf node_modules package-lock.json
+
+clean-all: clean clean-modules
