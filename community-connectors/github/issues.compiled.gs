@@ -23,7 +23,20 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
  * data for a Github repository
  */
 
-var getConfig = function getConfig(request) {
+var logged = function logged(name, func) {
+	return function () {
+		for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+			args[_key] = arguments[_key];
+		}
+
+		Logger.log("Calling %s with arguments:\n%s", name, args);
+		var result = func.apply(undefined, args);
+		Logger.log("%s returned:\n%s", name, result);
+		return result;
+	};
+};
+
+var getConfig = logged("getConfig", function (request) {
 	return {
 		configParams: [{
 			name: "org",
@@ -38,13 +51,13 @@ var getConfig = function getConfig(request) {
 
 		}]
 	};
-};
+});
 
-var getAuthType = function getAuthType() {
+var getAuthType = logged("getAuthType", function () {
 	return {
 		type: "OAUTH2"
 	};
-};
+});
 
 var ISSUE_SCHEMA = [{
 	name: "number",
@@ -139,11 +152,11 @@ var ISSUE_SCHEMA = [{
 	}
 }];
 
-var getSchema = function getSchema(request) {
+var getSchema = logged("getSchema", function (request) {
 	return {
 		schema: ISSUE_SCHEMA
 	};
-};
+});
 
 var schemaForField = function schemaForField(fieldName) {
 	return ISSUE_SCHEMA.find(function (field) {
@@ -151,9 +164,13 @@ var schemaForField = function schemaForField(fieldName) {
 	});
 };
 
-var schemaForFields = function schemaForFields(fieldNames) {
-	return fieldNames.map(schemaForField);
-};
+var schemaForFields = logged("schemaForFields", function (fieldNames) {
+	return fieldNames.map(function (fieldName) {
+		return ISSUE_SCHEMA.find(function (field) {
+			return field.name === fieldName;
+		});
+	});
+});
 
 // Format a date in the YYYYMMDDHH format expected by datastudio. date
 // should be an iso formatted datetime, or something falsey. Returns
@@ -203,7 +220,7 @@ var encodeQuery = function encodeQuery(queryParams) {
 	}).join('&');
 };
 
-var getData = function getData(request) {
+var getData = logged("getData", function (request) {
 	var _request$configParams = request.configParams,
 	    org = _request$configParams.org,
 	    repo = _request$configParams.repo;
@@ -238,7 +255,7 @@ var getData = function getData(request) {
 			};
 		})
 	};
-};
+});
 
 /**
  * OAUTH API

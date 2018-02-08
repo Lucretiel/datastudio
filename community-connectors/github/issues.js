@@ -19,7 +19,14 @@
  * data for a Github repository
  */
 
-const getConfig = request => ({
+const logged = (name, func) => (...args) => {
+	Logger.log("Calling %s with arguments:\n%s", name, args)
+	const result = func(...args)
+	Logger.log("%s returned:\n%s", name, result)
+	return result
+}
+
+const getConfig = logged("getConfig", request => ({
 	configParams: [{
 		name: "org",
 		displayName: "Organization",
@@ -32,11 +39,11 @@ const getConfig = request => ({
 		placeholder: "datastudio",
 
 	}],
-})
+}))
 
-const getAuthType = () => ({
+const getAuthType = logged("getAuthType", () => ({
 	type: "OAUTH2"
-})
+}))
 
 const ISSUE_SCHEMA = [{
 	name: "number",
@@ -132,9 +139,9 @@ const ISSUE_SCHEMA = [{
 }]
 
 
-const getSchema = request => ({
+const getSchema = logged("getSchema", request => ({
 	schema: ISSUE_SCHEMA
-})
+}))
 
 
 const schemaForField = fieldName => ISSUE_SCHEMA.find(
@@ -142,7 +149,11 @@ const schemaForField = fieldName => ISSUE_SCHEMA.find(
 )
 
 
-const schemaForFields = fieldNames => fieldNames.map(schemaForField)
+const schemaForFields = logged("schemaForFields", fieldNames =>
+	fieldNames.map(fieldName =>
+		ISSUE_SCHEMA.find(field => field.name === fieldName)
+	)
+)
 
 
 // Format a date in the YYYYMMDDHH format expected by datastudio. date
@@ -183,7 +194,7 @@ const encodeQuery = queryParams =>
 	.join('&')
 
 
-const getData = request => {
+const getData = logged("getData", request => {
 	const { org, repo } = request.configParams
 	const fieldNames = request.fields.map(field => field.name)
 
@@ -211,7 +222,7 @@ const getData = request => {
 			)
 		}))
 	}
-}
+})
 
 
 /**
