@@ -27,9 +27,13 @@ const find_ = (array, pred) => {
 const shallowMerge_ = objects => {
 	const result = {}
 	objects.forEach(object => {
-		if(object)
-			for(const key in object)
-				result[key] = object[key]
+		if(object) {
+			for(const key in object) {
+				if(object[key] !== undefined) {
+					result[key] = object[key]
+				}
+			}
+		}
 	})
 	return result
 }
@@ -57,13 +61,11 @@ const makeKeyedSchema_ = schema => {
 }
 
 
-const makeUnkeyedSchema_ = keyedSchema => {
-	return Object.keys(keyedSchema).map(name => {
-		const field = keyedSchema[name]
+const makeUnkeyedSchema_ = keyedSchema =>
+	mapObject_(keyedSchema, (field, name) => {
 		field.name = name
-		return field
+		return name
 	})
-}
 
 
 const makeSchemas_ = schema => schema instanceof Array ?
@@ -120,7 +122,7 @@ const baseConnector_ = Object.freeze({
 	// GET ALL THE DATA
 	getData(request, fieldNames, authClient) {
 		const receivedData = this.fetchData(request, fieldNames, authClient)
-		return this.baseTransformData(request, fieldNames, authClient, receivedData)
+		return this.baseTransformData(receivedData, fieldNames, request, authClient)
 	}
 
 	// DATA FETCH
@@ -160,8 +162,7 @@ const baseConnector_ = Object.freeze({
 
 		return shallowMerge_(
 			headers,
-			accept ? {"Accept": accept} : null,
-			auth ? {"Authorization": auth} : null
+			{"Accept": accept, "Authorization": auth},
 		)
 	}
 
@@ -174,6 +175,7 @@ const baseConnector_ = Object.freeze({
 	getAccept(request, fieldNames, authClient) { return this.accept }
 
 	getAuthHeader(request, fieldNames, authClient) {
+		// TODO: raise errors more aggressively here.
 		const token = this.getAuthToken(request, fieldName, authClient)
 		return token ? `token ${token}` : undefined
 	}
@@ -212,13 +214,18 @@ const baseConnector_ = Object.freeze({
 	getQuery(request, fieldNames, authClient) { return this.query }
 
 	// DATA PROCESSING
-	baseTransformData(receivedData, fieldNames, request, fieldNames, authClient) {
+	baseTransformData(receivedData, fieldNames, request, authClient) {
 		const schema = this.getKeyedSchema(request, fieldNames, authClient)
 		return {
 			schema: fieldNames.map(fieldName => schema[fieldName])
 			cachedData: false,
 			rows: this.transformData(receivedData, fieldNames, request).map(
-				transformedRow => ({values: transformedRow})
+				transformedRow => ({
+					values: (transformedRow instanceof Array ?
+						transformedRow :
+						fieldNames.map(fieldName => transformedRow[fieldName])
+					)
+				})
 			),
 		}
 	}
