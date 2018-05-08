@@ -29,7 +29,9 @@ const shallowMerge_ = objects => {
 	objects.forEach(object => {
 		if(object) {
 			for(const key in object) {
-				result[key] = object[key]
+				if(object[key] !== undefined) {
+					result[key] = object[key]
+				}
 			}
 		}
 	})
@@ -59,13 +61,11 @@ const makeKeyedSchema_ = schema => {
 }
 
 
-const makeUnkeyedSchema_ = keyedSchema => {
-	return Object.keys(keyedSchema).map(name => {
-		const field = keyedSchema[name]
+const makeUnkeyedSchema_ = keyedSchema =>
+	mapObject_(keyedSchema, (field, name) => {
 		field.name = name
-		return field
+		return name
 	})
-}
 
 
 const makeSchemas_ = schema => schema instanceof Array ?
@@ -156,8 +156,7 @@ const baseConnector_ = Object.freeze({
 
 		return shallowMerge_(
 			headers,
-			accept ? {"Accept": accept} : null,
-			auth ? {"Authorization": auth} : null
+			{"Accept": accept, "Authorization": auth},
 		)
 	}
 
@@ -170,6 +169,7 @@ const baseConnector_ = Object.freeze({
 	getAccept(request, fieldNames, authClient) { return this.accept }
 
 	getAuthHeader(request, fieldNames, authClient) {
+		// TODO: raise errors more aggressively here.
 		const token = this.getAuthToken(request, fieldName, authClient)
 		return token ? `token ${token}` : undefined
 	}
@@ -215,7 +215,12 @@ const baseConnector_ = Object.freeze({
 			schema: fieldNames.map(fieldName => keyedSchema[fieldName])
 			cachedData: false,
 			rows: this.transformData(receivedData, fieldNames, request).map(
-				transformedRow => ({values: transformedRow})
+				transformedRow => ({
+					values: (transformedRow instanceof Array ?
+						transformedRow :
+						fieldNames.map(fieldName => transformedRow[fieldName])
+					)
+				})
 			),
 		}
 	}
