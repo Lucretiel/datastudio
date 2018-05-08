@@ -27,9 +27,11 @@ const find_ = (array, pred) => {
 const shallowMerge_ = objects => {
 	const result = {}
 	objects.forEach(object => {
-		if(object)
-			for(const key in object)
+		if(object) {
+			for(const key in object) {
 				result[key] = object[key]
+			}
+		}
 	})
 	return result
 }
@@ -119,14 +121,8 @@ const baseConnector_ = Object.freeze({
 
 	// GET ALL THE DATA
 	getData(request, fieldNames, authClient) {
-		const receivedData = this.fetchData(request, fieldNames, authClient)
-		return this.baseTransformData(request, fieldNames, authClient, receivedData)
-	}
-
-	// DATA FETCH
-	fetchData(request, fieldNames, authClient) {
-		// TODO(nathanwest): allow customizing data parsing
-		return JSON.parse(this.fetchContent(request, fieldNames, authClient))
+		const receivedContent = this.fetchContent(request, fieldNames, authClient)
+		return this.transformContent(receivedContent, fieldNames, request, authClient)
 	}
 
 	fetchContent(request, fieldNames, authClient) {
@@ -212,10 +208,11 @@ const baseConnector_ = Object.freeze({
 	getQuery(request, fieldNames, authClient) { return this.query }
 
 	// DATA PROCESSING
-	baseTransformData(receivedData, fieldNames, request, fieldNames, authClient) {
-		const schema = this.getKeyedSchema(request, fieldNames, authClient)
+	transformContent(receivedContent, fieldNames, request, fieldNames, authClient) {
+		const keyedSchema = this.getKeyedSchema(request, fieldNames, authClient)
+		const receivedData = JSON.parse(receivedContent)
 		return {
-			schema: fieldNames.map(fieldName => schema[fieldName])
+			schema: fieldNames.map(fieldName => keyedSchema[fieldName])
 			cachedData: false,
 			rows: this.transformData(receivedData, fieldNames, request).map(
 				transformedRow => ({values: transformedRow})
