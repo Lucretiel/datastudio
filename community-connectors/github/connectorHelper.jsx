@@ -1,19 +1,47 @@
 "use strict"
 
-const apply_ = (object, name, value) => {
-	if value != null {
-		object[name] = value
-	}
-}
 
+/**
+ * Same as map, but iterates over the properties of an object
+ * @param  {!Object<string, T>} obj  The object to map over
+ * @param  {!function(T, string, Object<string, T>): U} func function to apply
+ *   to each element in the Object. The function is called with
+ *   (value, key, object)
+ * @return {!Array<U>} The mapped array
+ * @template T, U
+ */
 const mapObject_ = (obj, func) =>
 	Object.keys(obj).map(key => func(obj[key], key, obj))
 
-const encodeQuery = query => '?' + mapObject_(query, (value, key) =>
-	`${encodeURIComponent(key)}=${encodeURIComponent(value)}`
-).join('&')
+/**
+ * Convert an object's keys and values into an URL query string. Includes the
+ * preceeding "?". Escapes all the necessary characters in the keys and values.
+ *
+ * @param  {!Object<string, string>} query The object to convert into a URL
+ *   query
+ * @return {!string} The encoded query string.
+ */
+const encodeQuery = query => {
+	const encoded = mapObject_(query, (value, key) =>
+		`${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+	).join('&')
+
+	return encoded === "" ? "" : `?${encoded}`
+}
 
 
+/**
+ * Simple array find. Applies a predicate to each element of an array,
+ * returning the first element for which the predicate returns true. Returns
+ * undefined if no element matches.
+ *
+ * @param  {!Array<T>} array The array to search
+ * @param  {!function(T): boolean} pred  The predicate to apply to each member
+ *   of array
+ * @return {?T} The first element matching the predicate, or undefined if none
+ *   was found.
+ * @template T
+ */
 const find_ = (array, pred) => {
 	for(let i = 0; i < array.length; i++) {
 		const e = array[i]
@@ -24,6 +52,19 @@ const find_ = (array, pred) => {
 	return undefined
 }
 
+
+/**
+ * Shallowly merge any number of objects. Null objects will be skipped, and
+ * properties with undefined values will also be skipped. Properties of later
+ * objects override those from earlier objects.
+ *
+ * This is an immutable merge; a new object is created, and the old ones are
+ * not modified.
+ *
+ * @param  {!Array<?Object<string, ?*>>} objects An array of objects to
+ *   shallowly merge
+ * @return {!Object<string, *>} The merged object.
+ */
 const shallowMerge_ = objects => {
 	const result = {}
 	objects.forEach(object => {
@@ -39,12 +80,33 @@ const shallowMerge_ = objects => {
 }
 
 
+/**
+ * Map over an array OR an object. Returns an array of calling func on each
+ * element in the array or object.
+ *
+ * @param  {!Array<T>|Object<string, T>} iterable An object or array to map over
+ * @param  {!function(T, string|number, Array<T>|Object<string, T>): U} func The
+ *   mapping function. Called once for each element in the array or object.
+ *   Called with (value, index|key, array|object)
+ * @return {!Array<U>} The mapped array
+ * @template T, U
+ */
 const genericMap_ = (iterable, func) =>
 	iterable instanceof Array ?
 		iterable.map(func) :
 		mapObject_(iterable, func)
 
 
+/**
+ * Shallowly conmpare two objects. This is a "bad" shallow compare, because it
+ * simply compares all the keys in lhs to rhs, without looking at their length.
+ * It is intended to be used with objects that have the same layoyt, or at
+ * least, the same length. Compares each value with ===
+ * @param  {!Object<string, *>} lhs The first object to compare
+ * @param  {!Object<string, *>} rhs The second object to compare
+ * @return {!boolean} True if the two objects compare shallowly equal, false
+ *   otherwise
+ */
 const badShallowCompare_ = (lhs, rhs) => {
 	for(const key in lhs) {
 		if(lhs[key] !== rhs[key]) {
@@ -54,16 +116,35 @@ const badShallowCompare_ = (lhs, rhs) => {
 	return true
 }
 
-const makeKeyedSchema_ = schema => {
+/**
+ * Convert a community connector schema, which is an array of schema Fields,
+ * into a keyed schema. A keyed schema is an Object containing schema Fields,
+ * keyed on field.name for each field.
+ * @param  {Array<Object>} schema The schema to convert
+ * @return {Object<string, Object>} The keyed schema
+ */
+const makeKeyedSchema = schema => {
 	const keyedSchema = {}
 	schema.forEach(field => keyedSchema[field.name] = field)
 	return keyedSchema
 }
 
 
-const makeUnkeyedSchema_ = keyedSchema =>
+/**
+ * The opposite of {@link makeKeyedSchema}: convert a keyed schema into a
+ * unkeyed (array) schema. With this function, the .name property of each
+ * schema field is optional, and will be (mutatively) added to each field, if
+ * it is missing.
+ *
+ * @todo (nathanwest): Add SchemaField type.
+ *
+ * @param  {Object<string, Object>} keyedSchema The keyed schema. The values
+ *   of this object will have .name added to them, if it is not present already
+ * @return {Array<Object>}             [description]
+ */
+const makeUnkeyedSchema = keyedSchema =>
 	mapObject_(keyedSchema, (field, name) => {
-		field.name = name
+		field.name = field.name || name
 		return name
 	})
 
@@ -88,7 +169,7 @@ const makeSchemaGetters_ = schema => {
 		}
 
 		return {
-			getSchema(request, authClient) {
+			getUnkeyedSchema(request, authClient) {
 				refreshSchema.call(this, request, authClient)
 				return unkeyedSchema
 			},
@@ -96,28 +177,35 @@ const makeSchemaGetters_ = schema => {
 				refreshSchema.call(this, request, authClient)
 				return keyedSchema
 			}
+			getSchema(request, authClient) {
+				refreshSchema.call(this, request, authClient)
+				return ({ schema: unkeyedSchema })
+			}
+
 		}
 
 	} else {
 		const {keyedSchema, unkeyedSchema} = makeSchemas(schema)
+		const schema = ({schema: unkeyedSchema})
 
 		return {
-			getSchema: () => unkeyedSchema,
+			getUnkeyedSchema: () => unkeyedSchema,
 			getKeyedSchema: () => keyedSchema,
+			getSchema: () => schema,
 		}
 	}
 }
 
 
-const makeConfigGetter_ = config => config instanceof Function ? config : () => config
+const makeGetConfig = config => config instanceof Function ? config : () => config
 
 
 const baseConnector_ = Object.freeze({
-	// CONFIG
-	config: undefined
-
 	// SCHEMA
 	schema: undefined
+
+	// LABEL: Only needed with multiconnector
+	label: undefined
 
 	// GET ALL THE DATA
 	getData(request, fieldNames, authClient) {
@@ -292,20 +380,7 @@ const baseConnector_ = Object.freeze({
 })
 
 
-const getConnectorInterface = (connector, getAuthClient) => {
-	const authClient = getAuthClient ? getAuthClient() : null
-
-	const getConfig = request => connector.getConfig(request, authClient)
-	const getSchema = request => connector.getSchema(request, authClient)
-	const getData = request => connector.getData(
-		request, request.fields.map(field => field.name), authClient
-	)
-
-	return {getConfig, getSchema, getData}
-}
-
-
-const createPartialConnector_ = connectorDef => {
+const createPartialConnector = connectorDef => {
 	const schema = connector.schema
 	if(!schema) {
 		throw new Error("Must define .schema as a schema, keyed schema, or function")
@@ -325,12 +400,11 @@ const createConnector = connectorDef => {
 
 	const getConfig = makeConfigGetter_(config)
 	return shallowMerge_(createPartialConnector_(connectorDef), {getConfig})
-
 }
 
 
-const combineConnectors = ({config, connectors}) => {
-	const partialConnectors = connectors.map(createPartialConnector_)
+const createMultiConnector = ({config, connectorDefs}) => {
+	const partialConnectors = connectorDefs.map(createPartialConnector)
 	const baseGetConfig = makeConfigGetter_(config)
 	const key = "combineConnectors__connectorSelection"
 
@@ -339,12 +413,12 @@ const combineConnectors = ({config, connectors}) => {
 		name: key,
 		displayName: "Data Type",
 		helpText: "Select the type of data you want.",
-		options: genericMap_(connectors, (connector, key) => ({
-			value: key, label: connector.label,
+		options: genericMap_(connectorDefs, (connector, connectorKey) => ({
+			value: connectorKey, label: connector.label,
 		}))
 	}]
 
-	const getConnector = request => connectors[request.configParams[key]]
+	const getConnector = request => connectorDefs[request.configParams[key]]
 
 	return {
 		getConfig(request, authClient) {
@@ -360,4 +434,16 @@ const combineConnectors = ({config, connectors}) => {
 			return getConnector(request).getData(request, fieldNames, authClient)
 		}
 	}
+}
+
+const getConnectorInterface = (connector, getAuthClient) => {
+	const authClient = getAuthClient ? getAuthClient() : null
+
+	const getConfig = request => connector.getConfig(request, authClient)
+	const getSchema = request => connector.getSchema(request, authClient)
+	const getData = request => connector.getData(
+		request, request.fields.map(field => field.name), authClient
+	)
+
+	return {getConfig, getSchema, getData}
 }
