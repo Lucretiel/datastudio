@@ -1,11 +1,11 @@
 /**
  * Similar to Array.map, but for an object. Maps the value of each property to
  * an array, in sorted order by property name.
- * @param  {Object<string, T>} object The object to map over
- * @param  {function(string, T, Object<string, T>): U} func The mapping
+ * @param  {!Object<string, T>} object The object to map over
+ * @param  {!function(string, T, Object<string, T>): U} func The mapping
  *   function. Called once with (property value, property name, object) for
  *   each of the object properties, as returned by Object.keys
- * @return {Array<U>} The mapped array with the return values of func.
+ * @return {!Array<U>} The mapped array with the return values of func.
  * @template T, U
  * @example
  * var obj = {c: 3, b: 2, a: 1}
@@ -33,8 +33,8 @@ const makeKeyedSchema = unkeyedSchema => {
  * Given a connector, which has a .schema property, which should be an array
  * of schema fields, attach a getSchema() function and a keyedSchema property
  * to the connector.
- * @param  {Object} connector The connector to be modified
- * @return {Object}           The same connector object
+ * @param  {!Object} connector The connector to be modified
+ * @return {!Object}           The same connector object
  */
 const applyGetSchema = connector => {
 	const unkeyedSchema = connector.schema
